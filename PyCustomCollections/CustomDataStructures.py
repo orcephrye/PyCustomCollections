@@ -4,6 +4,7 @@
 # Author: Ryan Henrichson
 # Version: 1.0a
 # Description: This package contains different custom data types to make our lives easier. View the README for more info
+
 from __future__ import annotations
 
 import logging

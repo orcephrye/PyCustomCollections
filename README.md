@@ -3,9 +3,6 @@
 This package is meant to help parse large amounts of text from log files and command output. 
 
 ### Requirements
-```bash
-python3 -m pip install --upgrade difflib
-```
 
 There are 3 classes within CustomDataPackage. FrozenDict, KeyedList, IndexList. 
 
