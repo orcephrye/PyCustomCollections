@@ -1,4 +1,10 @@
-# Custom Data Package
+Custom Data Package
+===================
+
+
+----
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://choosealicense.com/licenses/gpl-3.0/)
+[![Docs](https://readthedocs.org/projects/ansicolortags/badge/?version=latest)](https://orcephrye.github.io/PyCustomCollections/)
 
 GitHub Page: https://orcephrye.github.io/PyCustomCollections/
 This package is meant to help parse large amounts of text from log files and command output. 
