@@ -1,5 +1,6 @@
 # Custom Data Package
 
+GitHub Page: https://orcephrye.github.io/PyCustomCollections/
 This package is meant to help parse large amounts of text from log files and command output. 
 
 ### Requirements
