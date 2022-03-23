@@ -423,13 +423,9 @@
                 
                 
                 <h1 id="custom-data-package">Custom Data Package</h1>
-<hr />
-<p><a href="https://choosealicense.com/licenses/gpl-3.0/"><img alt="License: GPL v3" src="https://img.shields.io/badge/License-GPLv3-blue.svg" /></a>
-<a href="https://orcephrye.github.io/PyCustomCollections/"><img alt="Docs" src="https://readthedocs.org/projects/ansicolortags/badge/?version=latest" /></a></p>
-<p>GitHub Page: https://orcephrye.github.io/PyCustomCollections/
-This package is meant to help parse large amounts of text from log files and command output. </p>
+<p>This package is meant to help parse large amounts of text from log files and command output. </p>
 <h3 id="requirements">Requirements</h3>
-<p>There are 4 classes within CustomDataPackage: FrozenDict, KeyedList, IndexList, and NamespaceDict</p>
+<p>There are 3 classes within CustomDataPackage. FrozenDict, KeyedList, IndexList. </p>
 <ul>
 <li>FrozenDict: is a simple hashable readonly version of the standard 'dict' Python class.</li>
 <li>KeyedList: This class inherites the standard 'list' Python class. It wraps a 'dict' called columns which uses a 
@@ -437,8 +433,6 @@ This package is meant to help parse large amounts of text from log files and com
     up columns or rows.</li>
 <li>IndexList: This inherites KeyedList but also indexes all words into a 'dict' named indexDict. These variables are 
     used to search and correlate data. This class is used to quickly search for words as well as individual lines.</li>
-<li>NamespaceDict: This inherites the argparse Namespace class. This class object is subscriptable and acts just like a 
-    dictionary as well as a Namespace object.</li>
 </ul>
 <h4 id="examples-for-keyedlist">Examples for KeyedList:</h4>
 <p>Creating a simple KeyedList:</p>

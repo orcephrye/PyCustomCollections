@@ -11,7 +11,7 @@ This package is meant to help parse large amounts of text from log files and com
 
 ### Requirements
 
-There are 3 classes within CustomDataPackage. FrozenDict, KeyedList, IndexList. 
+There are 4 classes within CustomDataPackage: FrozenDict, KeyedList, IndexList, and NamespaceDict
 
 - FrozenDict: is a simple hashable readonly version of the standard 'dict' Python class.
 - KeyedList: This class inherites the standard 'list' Python class. It wraps a 'dict' called columns which uses a 
@@ -19,7 +19,9 @@ There are 3 classes within CustomDataPackage. FrozenDict, KeyedList, IndexList.
     up columns or rows.
 - IndexList: This inherites KeyedList but also indexes all words into a 'dict' named indexDict. These variables are 
     used to search and correlate data. This class is used to quickly search for words as well as individual lines.
-    
+- NamespaceDict: This inherites the argparse Namespace class. This class object is subscriptable and acts just like a 
+    dictionary as well as a Namespace object.
+
 #### Examples for KeyedList:
 
 Creating a simple KeyedList:

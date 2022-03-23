@@ -11,6 +11,7 @@ import logging
 import traceback
 from difflib import get_close_matches as fmatch
 from collections import defaultdict, Counter
+from argparse import Namespace
 from typing import Hashable, Any, Union, Optional, List, Tuple, Type, Iterable, Dict
 
 
@@ -592,34 +593,71 @@ class IndexList(KeyedList):
         return results
 
 
-class FrozenDict(dict):
-    """ <a name="FrozenDict"></a>
-        This is a wrapper class for a Dictionary object. This makes the dict both read only but also hashable.
+class NamespaceDict(Namespace):
+    """
+        This is a simple wrapper around the argparse Namespace class. It is meant to make the Namespace subscriptable
+        like a dictionary. It attempts to copy all the dictionary functionality.
     """
 
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, args)
+    def __init__(self, *args, **kwargs):
+        super(NamespaceDict, self).__init__(**kwargs)
+        self.__hiddenDict = vars(self)
 
-    def __hash__(self) -> int:
-        """ This is here to make the Dict hashable. Normally it is not and simply adding this magic function doesn't
-            mean that the dict is hashable. Making the dict immutable helps to make this hashable accurate.
+    def __getitem__(self, item):
+        return self.__hiddenDict[item]
 
-        - :return: hash value of '__str__'.
-        """
+    def __setitem__(self, key, value):
+        self.__hiddenDict[key] = value
 
-        return hash(self.__str__())
+    def __str__(self):
+        return str(self.copy())
 
-    @staticmethod
-    def _readonly(*args, **kwards) -> None:
-        """ This is a custom private method that overrides the following class methods: __delattr__, __setattr__,
-            __setitem__,  pop, update, setdefault, clear, popitem. All those methods share this method as away to
-            make this class immutable. This will always and only raise a TypeError.
+    def clear(self):
+        self.__hiddenDict.clear()
+        self.__hiddenDict = vars(self)
 
-        - :param args: (ignored)
-        - :param kwards: (ignored)
-        - :return: (Never/raises TypeError)
-        """
+    def copy(self):
+        newDict = self.__hiddenDict.copy()
+        newDict.pop('_NamespaceDict__hiddenDict')
+        return newDict
 
-        raise TypeError("Cannot modify Immutable Instance")
+    def fromkeys(self, iterable, value=None):
+        return self.__hiddenDict.fromkeys(iterable, value)
 
-    __delattr__ = __setattr__ = __setitem__ = pop = update = setdefault = clear = popitem = _readonly
+    def get(self, key, default=None):
+        return self.__hiddenDict.get(key, default=default)
+
+    def items(self):
+        items = (item for item in self.__hiddenDict.items())
+        next(items)
+        return set(items)
+
+    def keys(self):
+        key = (key for key in self.__hiddenDict.keys())
+        next(key)
+        return set(key)
+
+    def pop(self, key):
+        if len(self.__hiddenDict) == 1:
+            item = self.__hiddenDict.pop(key)
+            self.__hiddenDict = vars(self)
+            return item
+        return self.__hiddenDict.pop(key)
+
+    def popitem(self):
+        if len(self.__hiddenDict) == 1:
+            item = self.__hiddenDict.popitem()
+            self.__hiddenDict = vars(self)
+            return item
+        return self.__hiddenDict.popitem()
+
+    def setdefault(self, key, default):
+        return self.__hiddenDict.setdefault(key, default)
+
+    def update(self, m, **kwargs):
+        self.__hiddenDict.update(m, **kwargs)
+
+    def values(self):
+        value = (value for value in self.__hiddenDict.keys())
+        next(value)
+        return list(value)
