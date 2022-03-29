@@ -603,6 +603,9 @@ class NamespaceDict(Namespace):
         super(NamespaceDict, self).__init__(**kwargs)
         self.__hiddenDict = vars(self)
 
+    def __iter__(self):
+        return self.__hiddenDict.__iter__()
+
     def __getitem__(self, item):
         return self.__hiddenDict[item]
 
@@ -625,12 +628,12 @@ class NamespaceDict(Namespace):
         return self.__hiddenDict.fromkeys(iterable, value)
 
     def get(self, key, default=None):
-        return self.__hiddenDict.get(key, default=default)
+        return self.__hiddenDict.get(key, default)
 
     def items(self):
         items = (item for item in self.__hiddenDict.items())
         next(items)
-        return set(items)
+        return items
 
     def keys(self):
         key = (key for key in self.__hiddenDict.keys())
