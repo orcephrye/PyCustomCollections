@@ -330,8 +330,7 @@ class IndexList(KeyedList):
         - :param pair: Has to be a tuple!
         - :return: bool
         """
-
-        if len(pair) == 2:
+        if len(pair) != 2:
             return False
         return pair[-1] in self.getColumn(pair[0], default=[])
 
