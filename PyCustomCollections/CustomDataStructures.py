@@ -23,6 +23,10 @@ VERSION = '1.0a'
 log = logging.getLogger('CustomDataStructures')
 
 
+def dummy_func(*args, **kwargs):
+    return kwargs.get('_default', None)
+
+
 class FrozenDict(dict):
 
     def __hash__(self):
@@ -767,9 +771,9 @@ class IndexedTable(KeyedTable):
         if explicit is True and ignore_case is False:
             return value in self.__index
         if explicit is True and ignore_case is True:
-            value = value.lower()
+            value = getattr(value, 'lower', dummy_func)()
             for item in self.__index:
-                if value == item.lower():
+                if value == getattr(item, 'lower', dummy_func)():
                     return True
             return False
         if explicit is False and ignore_case is False:
@@ -778,9 +782,9 @@ class IndexedTable(KeyedTable):
                     return True
             return False
         if explicit is False and ignore_case is True:
-            value = value.lower()
+            value = getattr(value, 'lower', dummy_func)()
             for item in self.__index:
-                if value in item.lower():
+                if value in getattr(item, 'lower', dummy_func)():
                     return True
             return False
 
@@ -794,15 +798,15 @@ class IndexedTable(KeyedTable):
                     return True
             return False
         if explicit is True and ignore_case is True:
-            value = value.lower()
+            value = getattr(value, 'lower', dummy_func)()
             for item in self.iter_column(column):
-                if value == item.lower():
+                if value == getattr(item, 'lower', dummy_func)():
                     return True
             return False
         if explicit is False and ignore_case is True:
-            value = value.lower()
+            value = getattr(value, 'lower', dummy_func)()
             for item in self.iter_column(column):
-                if value in item.lower():
+                if value in getattr(item, 'lower', dummy_func)():
                     return True
             return False
         if explicit is False and ignore_case is False:
@@ -822,9 +826,13 @@ class IndexedTable(KeyedTable):
         if explicit is False and ignore_case is False:
             output = (index for key in self.__index if keyword in key for index in self.__index[key])
         if explicit is True and ignore_case is True:
-            output = (index for key in self.__index if keyword.lower() == key.lower() for index in self.__index[key])
+            keyword = getattr(keyword, 'lower', dummy_func)()
+            output = (index for key in self.__index if keyword == getattr(key, 'lower', dummy_func)()
+                      for index in self.__index[key])
         if explicit is False and ignore_case is True:
-            output = (index for key in self.__index if keyword.lower() in key.lower() for index in self.__index[key])
+            keyword = getattr(keyword, 'lower', dummy_func)()
+            output = (index for key in self.__index if keyword in getattr(key, 'lower', dummy_func)()
+                      for index in self.__index[key])
         return self._ordered(output, ordered=ordered)
 
     def value_by_keyword(self, keyword, explicit=True, ignore_case=False, ordered=True, convert=True):
@@ -879,14 +887,18 @@ class IndexedTable(KeyedTable):
         if isinstance(keywords, str):
             keywords = [keywords]
         if ignore_case is True:
-            keywords = [key.lower() for key in keywords]
+            keywords = [getattr(key, 'lower', dummy_func)() for key in keywords]
 
         if explicit is True and ignore_case is False:
             output = (index for index, value in enumerate(columnIter) if value in keywords)
         if explicit is False and ignore_case is False:
             output = (index for index, value in enumerate(columnIter) for key in keywords if key in value)
+        if explicit is True and ignore_case is True:
+            output = (index for index, value in enumerate(columnIter)
+                      for key in keywords if key == getattr(value, 'lower', dummy_func)())
         if explicit is False and ignore_case is True:
-            output = (index for index, value in enumerate(columnIter) for key in keywords if key in value.lower())
+            output = (index for index, value in enumerate(columnIter)
+                      for key in keywords if key in getattr(value, 'lower', dummy_func)())
         return self._ordered(output, ordered=ordered)
 
     def search_by_column(self, column: Hashable, keywords: Union[str, tuple], explicit=True, ignore_case=False,
@@ -941,8 +953,8 @@ class IndexedTable(KeyedTable):
                                                                        ignore_case=ignore_case, ordered=ordered)],
                              convert=convert)
 
-    def incomplete_line_search(self, *args, words_left: float = 0.4,
-                               explicit=True, ignore_case=False, convert=True, ordered=True) -> Iterable:
+    def incomplete_row_search(self, *args, words_left: float = 0.4,
+                              explicit=True, ignore_case=False, convert=True, ordered=True) -> Iterable:
         """ This is a special search tool that doesn't have a 'indices_of' paired method. It is meant to run a search
             against a whole line instead of just a single entry. It also is meant to be able to return values even
             when certain words are missing. The goal is to do something similar to a fuzzy match but against a
