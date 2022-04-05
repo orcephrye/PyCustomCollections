@@ -1125,9 +1125,10 @@ class IndexedTable(KeyedTable):
         self._update_index(len(self) - 1, [obj])
 
     def extend(self, iterable) -> None:
+        newList = list(iterable)
         length = len(self)
-        super(IndexedTable, self).extend(iterable)
-        self._update_index(length, iterable)
+        super(IndexedTable, self).extend(newList)
+        self._update_index(length, newList)
 
     def insert(self, index, obj) -> None:
         super(IndexedTable, self).insert(index, obj)
