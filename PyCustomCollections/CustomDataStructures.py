@@ -396,7 +396,9 @@ class IndexList(KeyedList):
             else:
                 return len(fmatch(compareKey, [compareValue], n=1, cutoff=matchCutoff)) > 0
 
-        return [x for x in range(len(values)) if _searchColumns(compareKey=value, compareValue=values[x])]
+        if values:
+            return [x for x in range(len(values)) if _searchColumns(compareKey=value, compareValue=values[x])]
+        return []
 
     def searchColumns(self, *args, dedup: bool = False, intersect: bool = False, **kwargs) -> List:
         """ Using searchColumn this can take multiple columns and can also deduplicate index values or only show index
