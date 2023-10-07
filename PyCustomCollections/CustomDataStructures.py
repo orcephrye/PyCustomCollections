@@ -12,7 +12,7 @@ import traceback
 from difflib import get_close_matches as fmatch
 from collections import defaultdict, Counter
 from argparse import Namespace
-from typing import Hashable, Any, Union, Optional, List, Tuple, Type, Iterable, Dict
+from typing import Hashable, Any, Union, Optional, List, Tuple, Type, Iterable, Dict, Callable
 
 
 VERSION = '1.0a'
@@ -21,6 +21,10 @@ VERSION = '1.0a'
 # logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(funcName)s %(lineno)s %(message)s',
 #                     level=logging.INFO)
 log = logging.getLogger('CustomDataStructures')
+
+
+def dummy_func(*args, **kwargs):
+    return kwargs.get('_default', None)
 
 
 class FrozenDict(dict):
@@ -592,6 +596,580 @@ class IndexList(KeyedList):
             results.append(max(otherList, key=_maxHelperFunc()))
 
         return results
+
+
+class KeyedTable(list):
+    """ <a name="KeyedTable"></a>
+        KeyedTable is designed to act like a Table. A list of lists where it's rows are numbered and its columns are
+        named. KeyedList achieves this by use of a class variable of type dict called 'columns'. It overrides the
+        __getitem__ (ie: []) magic function to make the class subscriptable. The dict template values are ints that
+        represent a position in each item on the KeyedList. For example: a template of {'ID': 0} means that:
+        KeyedList['ID'] would return all the values of item[0] in its list or [item[0] for item in self].
+
+        :var columns: A dictionary. Its values MUST BE INTEGERS
+    """
+
+    columns: dict = None
+
+    def __init__(self, *args, columns: Optional[Dict] = None):
+        self.columns = columns or {}
+        if len([value for value in self.columns.values() if type(value) != int]) > 0:
+            raise TypeError('The columns dictionary values must be integers')
+        super().__init__(*args)
+
+    def __getitem__(self, item: Union[Hashable, slice]) -> list:
+        """ This override is meant to make this class subscriptable and thus item can more than just int/slice """
+        if isinstance(item, (int, slice)):
+            return super().__getitem__(item)
+        if not isinstance(item, str):
+            raise TypeError(f'KeyedTable indices must be either integers, slices or strings not {type(item)}')
+        if not self.columns and item.isdigit():
+            indices = int(item)
+        else:
+            indices = self.columns[item]
+        return [value[indices] for value in self]
+
+    def get(self, item: Hashable, default: Any = None) -> Union[list, Any]:
+        """ This attempts to emulate the dictionary 'get' method behavior. It will use the 'item' to do a get on the
+            'columns' class variable which if exists will return an integer value representing the column number.
+            This function will then iterator through the KeyedTable list row by row and build a new list from the
+            specified column number. Or it will return the specified default.
+
+        :param item: (Hashable type) This is usually a string. If the KeyedTable isn't provided with a columns
+            dictionary this item can still be an string representable: IE: '1' and this will still work.
+        :param default: The value to return if the item is not in 'columns' or item.isdigit() is False.
+        :return: list or default
+        """
+
+        try:
+            if not self.columns and isinstance(item, str) and item.isdigit():
+                index = int(item)
+            else:
+                index = self.columns[item]
+        except:
+            return default
+        return [value[index] for value in self]
+
+    def get_cell(self, row: int, col: Hashable, default: Any = None) -> Any:
+        """ This requires a row specified by an integer and a column specified by a Hashable (usually str) type.
+            This also attempts to emulate the dictionary 'get' method behavior in teh same way KeyedList's 'get'
+            method does.
+
+        :param row: (int) This is the row number
+        :param col: (Hashable) usually a string
+        :param default: The value to return the row/col cannot be found
+        :return: list or default
+        """
+
+        if len(self) < abs(row):
+            return default
+        if not self.columns and isinstance(col, str) and col.isdigit():
+            return self[row][self.columns[int(col)]]
+        elif col not in self.columns:
+            return default
+        return self[row][self.columns[col]]
+
+    def iter_column(self, col: Hashable, default: Any = ()) -> Union[Iterable, Any]:
+        """ Again this has the 'default' parameter which helps this method behave like a dictionary's 'get' method in
+            the same way that KeyedList's 'get' method does. This is ment to make it efficient to iterate over any
+            column in the dataset.
+
+        :param col: (Hashable) used to look into the 'columns' dictionary
+        :param default: The value to return if the col variable is not in columns.
+        :return: iterator
+        """
+
+        try:
+            if not self.columns and isinstance(col, str) and col.isdigit():
+                indices = int(col)
+            else:
+                indices = self.columns[col]
+        except:
+            return default
+        return (value[indices] for value in self)
+
+    def iter_row(self, row: int, default: Any = ()) -> Union[Iterable, Any]:
+        """ Again this has the 'default' parameter which helps this method behave like a dictionary's 'get' method in
+            the same way that KeyedList's 'get' method does. This is ment to make it easy to iterator over a
+            specified row. Usually only necessary if the rows in the data are massive.
+
+        :param row: (int) used to specify the row
+        :param default: The value to return if the row to big
+        :return: iterator
+        """
+
+        if len(self) < abs(row):
+            return default
+        return (item for item in self[row])
+
+    def sort_by_column(self, column: Hashable, column_type: Callable, reverse: bool = False) -> None:
+        """ A special version of the builtin sort method in List. This is used to take advantage of the keyed/labeled
+            columns in the KeyedTable. There are no safety built into this function and it can raise an exception
+            if the wrong column or column_type is provided.
+
+        :param column: (Hashable)
+        :param column_type: (Callable) a type such as int or str or any object that is callable that can convert its
+            args into something usable as a key in sort.
+        :param reverse: Same as reverse in List's 'sort' method.
+        :return: None
+        """
+
+        super().sort(key=lambda x: column_type(x[self.columns[column]]), reverse=reverse)
+
+
+class IndexedTable(KeyedTable):
+    """ <a name="IndexedTable"></a>
+        IndexedTable: Inherits from KeyedTable. Its purpose is to add the ability to index values passed to itself.
+        Which in turn makes searching for values and row/columns between O(1) ie: constant to O(n log(n)) slightly
+        above linear.
+
+        This class attempts to follow a standard of naming methods. There are 'has_', 'indices_of_', 'fuzzy_' and
+        the primary search functions, 'search', 'search_by_column', 'correlation'. Each of the primary search functions
+        are matched with a fuzzy_ version and 'indices_of_'. The 'has_' methods always return bools. The 'indices_of_'
+        always return iterators of ints.
+
+        Here are the common parameters found in most methods and there default values:
+        explicit=True | ignore_case=False | ordered=True | convert=True | similarity=0.6
+
+        * explicit: This implies the lookup wil do a '=='. IE: key == item. When False it does: key in item.
+        * ignore_case: When True this will do a 'lower()' on the value in question, this assumes string, on both the
+            key and item before the comparison.
+        * ordered: This will take the indices' data, which should be in a set and convert it into a list then run sort
+            on it.
+        * convert: This will always return a new IndexedTable, even if empty, unless it is false then it will return
+            a list.
+        * similarity: This is only associated with fuzzy methods and is an indication as to how similar the keyword
+            needs to be to the item.
+
+        The default values for explicit, ignore_case, ordered, and convert can be changed on init.
+
+    """
+
+    def __init__(self, *args, columns: Optional[Dict] = None,
+                 explicit: bool = True, ignore_case: bool = False, ordered: bool = True, convert: bool = True):
+        self.explicit = explicit
+        self.ignore_case = ignore_case
+        self.ordered = ordered
+        self.convert = convert
+        self.__index = defaultdict(set)
+        if len(args) == 1 and isinstance(args[0], (IndexedTable, KeyedTable)):
+            super().__init__(*args, columns=args[0].columns)
+            self.__index = getattr(args[0], 'index', defaultdict(set))
+        else:
+            super().__init__(*args, columns=columns)
+        if len(self) > 0:
+            self.build_index()
+
+    def __str__(self):
+        return '\n'.join((' '.join(item) for item in self))
+
+    def build_index(self, rebuild=True) -> None:
+        """ This builds the Index using a 'hidden' variable '__index' which is a defaultdict whose values are sets """
+        if self.__index:
+            if rebuild:
+                self.__index = defaultdict(set)
+            else:
+                return None
+
+        for i, items in enumerate(self):
+            for item in items:
+                self.__index[item].add(i)
+
+    def has_value(self, value: Hashable, **kwargs) -> bool:
+        """ Returns true if the value exists within the index. """
+        explicit, ignore_case = self._processKwargs('explicit', 'ignore_case', **kwargs)
+        if explicit is True and ignore_case is False:
+            return value in self.__index
+        if explicit is True and ignore_case is True:
+            value = getattr(value, 'lower', dummy_func)()
+            for item in self.__index:
+                if value == getattr(item, 'lower', dummy_func)():
+                    return True
+            return False
+        if explicit is False and ignore_case is False:
+            for item in self.__index:
+                if value in item:
+                    return True
+            return False
+        if explicit is False and ignore_case is True:
+            value = getattr(value, 'lower', dummy_func)()
+            for item in self.__index:
+                if value in getattr(item, 'lower', dummy_func)():
+                    return True
+            return False
+
+    def has_pair(self, column, value, **kwargs) -> bool:
+        """ Looks for a value within a column and returns True if it exists """
+        explicit, ignore_case = self._processKwargs('explicit', 'ignore_case', **kwargs)
+        if explicit is True and ignore_case is False:
+            if value not in self.__index:
+                return False
+            for item in self.iter_column(column):
+                if value == item:
+                    return True
+            return False
+        if explicit is True and ignore_case is True:
+            value = getattr(value, 'lower', dummy_func)()
+            for item in self.iter_column(column):
+                if value == getattr(item, 'lower', dummy_func)():
+                    return True
+            return False
+        if explicit is False and ignore_case is True:
+            value = getattr(value, 'lower', dummy_func)()
+            for item in self.iter_column(column):
+                if value in getattr(item, 'lower', dummy_func)():
+                    return True
+            return False
+        if explicit is False and ignore_case is False:
+            for item in self.iter_column(column):
+                if value in item:
+                    return True
+            return False
+
+    def indices_of_value_by_keyword(self, keyword, **kwargs) -> Iterable:
+        """
+            Helper function for value_by_keyword returns an iterable object of indices as does all 'indices_of' methods
+        """
+
+        explicit, ignore_case, ordered = self._processKwargs('explicit', 'ignore_case', 'ordered',  **kwargs)
+        output = ()
+        if explicit is True and ignore_case is False:
+            output = (index for index in self.__index.get(keyword, ()))
+        if explicit is False and ignore_case is False:
+            output = (index for key in self.__index if keyword in key for index in self.__index[key])
+        if explicit is True and ignore_case is True:
+            keyword = getattr(keyword, 'lower', dummy_func)()
+            output = (index for key in self.__index if keyword == getattr(key, 'lower', dummy_func)()
+                      for index in self.__index[key])
+        if explicit is False and ignore_case is True:
+            keyword = getattr(keyword, 'lower', dummy_func)()
+            output = (index for key in self.__index if keyword in getattr(key, 'lower', dummy_func)()
+                      for index in self.__index[key])
+        return self._ordered(output, ordered=ordered)
+
+    def value_by_keyword(self, keyword, **kwargs):
+        """ Searches the dataset using a single keyword. A simpler version of the search method."""
+        return self._convert([self[index]
+                              for index in self.indices_of_value_by_keyword(keyword, **kwargs)],
+                             convert=self._processKwargs('convert', **kwargs))
+
+    def indices_of_search(self, *args, AND=False, **kwargs) -> Iterable:
+        """ Helper function for search returns an iterable object of indices as does all 'indices_of' methods """
+        explicit, ignore_case, ordered = self._processKwargs('explicit', 'ignore_case', 'ordered', **kwargs)
+        if AND is True:
+            sets = [set(self.indices_of_value_by_keyword(keyword,
+                                                         explicit=explicit,
+                                                         ignore_case=ignore_case,
+                                                         ordered=False))
+                    for keyword in args]
+            return iter(self._ordered(set.intersection(*sets), ordered=ordered))
+        else:
+            return iter(self._ordered({index for keyword in args
+                                       for index in self.indices_of_value_by_keyword(keyword,
+                                                                                     explicit=explicit,
+                                                                                     ignore_case=ignore_case,
+                                                                                     ordered=False)},
+                                      ordered=ordered))
+
+    def search(self, *args, AND=False, **kwargs) -> Iterable:
+        """ This can take an undefined number of keywords via *args parameter. It searches the dataset using all these
+            keywords using its helper method indices_of_search. It takes the indices provided by indices_of_search
+            and generates a Table (list of list) data structure and depending on the convert parameter converts it
+            into a new IndexedTable.
+
+        :param args: A tuple of keywords, usually text but actually can be of any Hashable type.
+        :param AND: (bool: False) By default this is False which implies that the returned dataset will include items
+            that have at least 1 keyword noted. True will imply that the dataset returned will only have data that
+            includes ALL keywords provided.
+        :param explicit: (bool: True) read the Class doc string for more information.
+        :param ignore_case: (bool: False) read the Class doc string for more information.
+        :param ordered: (bool: True) read the Class doc string for more information.
+        :param convert: (bool: True) read the Class doc string for more information.
+        :return: Iterable (IndexedTable or List)
+        """
+
+        return self._convert([self[index]
+                              for index in self.indices_of_search(*args, AND=AND, **kwargs)],
+                             convert=self._processKwargs('convert', **kwargs))
+
+    def indices_of_search_by_column(self, column: Hashable, keywords, **kwargs) -> Iterable:
+        """
+            Helper function for search_by_column returns an iterable object of indices as does all 'indices_of' methods
+        """
+
+        explicit, ignore_case, ordered = self._processKwargs('explicit', 'ignore_case', 'ordered', **kwargs)
+        columnIter = self.iter_column(column, default=None)
+        output = ()
+        if columnIter is None:
+            return output
+        if isinstance(keywords, str):
+            keywords = [keywords]
+        if ignore_case is True:
+            keywords = [getattr(key, 'lower', dummy_func)() for key in keywords]
+
+        if explicit is True and ignore_case is False:
+            output = (index for index, value in enumerate(columnIter) if value in keywords)
+        if explicit is False and ignore_case is False:
+            output = (index for index, value in enumerate(columnIter) for key in keywords if key in value)
+        if explicit is True and ignore_case is True:
+            output = (index for index, value in enumerate(columnIter)
+                      for key in keywords if key == getattr(value, 'lower', dummy_func)())
+        if explicit is False and ignore_case is True:
+            output = (index for index, value in enumerate(columnIter)
+                      for key in keywords if key in getattr(value, 'lower', dummy_func)())
+        return self._ordered(output, ordered=ordered)
+
+    def search_by_column(self, column: Hashable, keywords: Union[str, tuple], **kwargs) -> Iterable:
+        """ This uses a pair of data. A column which should be value that can be found in the 'columns' KeyedList class
+            variable. And 1 or more keywords. The keywords must be a string which is treated like a single value or a
+            tuple of values.
+
+        :param column: (Hashable) usually a string which is used iterator over a column using KeyedList's 'iter_column'.
+        :param keywords: (str, tuple). Used to compare values found within the output of 'iter_columns'.
+        :param explicit: (bool: True) read the Class doc string for more information.
+        :param ignore_case: (bool: False) read the Class doc string for more information.
+        :param ordered: (bool: True) read the Class doc string for more information.
+        :param convert: (bool: True) read the Class doc string for more information.
+        :return: Iterable (IndexedTable or List)
+        """
+
+        return self._convert([self[index]
+                              for index in self.indices_of_search_by_column(column, keywords, **kwargs)],
+                             convert=self._processKwargs('convert', **kwargs))
+
+    def indices_of_correlation(self, *args, **kwargs) -> Iterable:
+        """ Helper function for correlation returns an iterable object of indices as does all 'indices_of' methods """
+
+        explicit, ignore_case, ordered = self._processKwargs('explicit', 'ignore_case', 'ordered', **kwargs)
+        parameters = ('column', 'keywords', 'explicit', 'ignore_case')
+        sets = []
+        for searchPair in args:
+            searchPair = dict(zip(parameters, searchPair))
+            if len(searchPair) < 3:
+                searchPair.update({'explicit': explicit, 'ignore_case': ignore_case})
+            searchPair.update({'ordered': False})
+            sets.append(set(self.indices_of_search_by_column(**searchPair)))
+        return iter(self._ordered(set.intersection(*sets), ordered=ordered))
+
+    def correlation(self, *args, **kwargs) -> Iterable:
+        """ This acts similar to 'search_by_column' in that it looks for pairs as in ('COLUMN_NAME', 'search_value').
+            It however, can take multiple such pairs. Each pair is a tuple and the length of the tuple must be either,
+            2 or 4. IE: ('USER', 'mongod') or ('USER', 'Mongo', False, True). The last two bool values are the
+            arguments 'explicit' and 'ignore_case'. If they are not present, in other words the tuple pair is of size
+            2, the 'explicit', and 'ignore_case' parameters provided in the method call are used as defaults. This
+            allows for customizing which pairs require explicit/case searching and which don't.
+
+        :param args: (tuple) Tuples of length 2 or 4. IE: ('COLUMN_NAME', 'search_value', True, False) or
+            ('COLUMN_NAME', 'search_value')
+        :param explicit: (bool: True) read the Class doc string for more information.
+        :param ignore_case: (bool: False) read the Class doc string for more information.
+        :param ordered: (bool: True) read the Class doc string for more information.
+        :param convert: (bool: True) read the Class doc string for more information.
+        :return: Iterable (IndexedTable or List)
+        """
+
+        return self._convert([self[index]
+                              for index in self.indices_of_correlation(*args, **kwargs)],
+                             convert=self._processKwargs('convert', **kwargs))
+
+    def incomplete_row_search(self, *args, words_left: float = 0.4, **kwargs) -> Iterable:
+        """ This is a special search tool that doesn't have a 'indices_of' paired method. It is meant to run a search
+            against a whole line instead of just a single entry. It also is meant to be able to return values even
+            when certain words are missing. The goal is to do something similar to a fuzzy match but against a
+            whole line. This is a very efficient search as it uses 'has_value' to build out keywords that are then
+            passed to 'search' with AND=True set.
+
+        :param args: This is either an undetermined number of keywords or a single item which is a string. If it is a
+            single string item this item is stripped and split to build out a list that should loosely represent the row
+            in the table that is being searched for.
+        :param words_left: The percentage of words required to match. If you send a line: 'Marry had a little lamb' and
+            the only word found to exist within the Table is Marry the then the ratio remaining about be 0.2 and thus
+            the search would stop and return empty.
+        :param explicit: (bool: True) read the Class doc string for more information.
+        :param ignore_case: (bool: False) read the Class doc string for more information.
+        :param ordered: (bool: True) read the Class doc string for more information.
+        :param convert: (bool: True) read the Class doc string for more information.
+        :return: Iterable (IndexedTable or List)
+        """
+
+        explicit, ignore_case, ordered, convert = self._processKwargs('explicit', 'ignore_case',
+                                                                      'ordered', 'convert', **kwargs)
+
+        if len(args) == 1:
+            if type(args[0]) is str and len(args[0].strip().split()) > 1:
+                args = args[0].strip().split()
+
+        newSearchList = [value for value in args if self.has_value(value, explicit=explicit, ignore_case=ignore_case)]
+        if not newSearchList:
+            return self._convert([[]], convert=True)
+
+        if len(newSearchList) < 2:
+            return self._convert([[]], convert=True)
+
+        if float(len(newSearchList)) / float(len(args)) < words_left:
+            return self._convert([[]], convert=True)
+
+        return self.search(*args, AND=True, explicit=explicit, ignore_case=ignore_case,
+                           convert=convert, ordered=ordered)
+
+    def fuzzy_has_value(self, value: str, similarity=0.6) -> bool:
+        """ Like its 'has_value' cousin however this uses a tool from 'difflib' to do a fuzzy match """
+        return len(fmatch(value, self.__index, n=1, cutoff=similarity)) > 0
+
+    def fuzzy_get_values(self, value: str, similarity=0.6) -> list:
+        """ Like 'fuzzy_has_value' but instead returns the keywords found if any """
+        return fmatch(value, self.__index, n=len(self.__index), cutoff=similarity)
+
+    def fuzzy_has_pair(self, column, value, similarity=0.6) -> bool:
+        """ Like its 'has_pair' cousin however this uses a tool from 'difflib' to do a fuzzy match """
+        return len(fmatch(value, self.get(column, ()), n=1, cutoff=similarity)) > 0
+
+    def fuzzy_get_pairs(self, column, value, similarity=0.6) -> list:
+        """ Like 'fuzzy_has_pair' but instead returns teh keywords found if any """
+        return fmatch(value, self.get(column, ()), n=len(self.__index), cutoff=similarity)
+
+    def indices_of_fuzzy_search(self, *args, similarity=0.6, AND=False, **kwargs) -> Iterable:
+        """ Helper function for fuzzy_search returns an iterable object of indices as does all 'indices_of' methods """
+
+        ordered = self._processKwargs('ordered', **kwargs)
+        number = len(self.__index)
+        sets = list((self.__index[match]
+                     for keyword in args
+                     for match in fmatch(keyword, self.__index, n=number, cutoff=similarity)))
+        if AND is True:
+            return iter(self._ordered(set.intersection(*sets), ordered=ordered))
+        else:
+            return iter(self._ordered(set.union(*sets), ordered=ordered))
+
+    def fuzzy_search(self, *args, similarity=0.6, AND=False, **kwargs) -> Iterable:
+        """ Like the 'search' method but instead uses tool a from 'difflib' to do a fuzzy match """
+        return self._convert([self[index]
+                              for index in self.indices_of_fuzzy_search(*args, similarity=similarity,
+                                                                        AND=AND, **kwargs)],
+                             convert=self._processKwargs('convert', **kwargs))
+
+    def indices_of_fuzzy_column(self, column: str, keywords, similarity=0.6, **kwargs) -> Iterable:
+        """ Helper function for fuzzy_column returns an iterable object of indices as does all 'indices_of' methods """
+        if isinstance(keywords, str):
+            keywords = [keywords]
+        length = len(self.__index)
+        out = {index
+               for keyword in keywords
+               for match in set(fmatch(keyword, self.iter_column(column), n=length, cutoff=similarity))
+               for index in self.__index[match]}
+        return iter(self._ordered(out, ordered=self._processKwargs('ordered', **kwargs)))
+
+    def fuzzy_column(self, column: str, keywords, similarity=0.6, **kwargs) -> Iterable:
+        """ Like the 'search_by_column' method but instead uses tool a from 'difflib' to do a fuzzy match """
+        return self._convert([self[index]
+                              for index in self.indices_of_fuzzy_column(column, keywords,
+                                                                        similarity=similarity,
+                                                                        **kwargs)],
+                             convert=self._processKwargs('convert', **kwargs))
+
+    def indices_of_fuzzy_correlation(self, *args, similarity=0.6, **kwargs):
+        """
+            Helper function for fuzzy_correlation returns an iterable object of indices as does all 'indices_of' methods
+        """
+
+        sets = []
+        for searchPair in args:
+            if len(searchPair) < 3:
+                searchPair = searchPair + (similarity,)
+            sets.append(set(self.indices_of_fuzzy_column(*searchPair, ordered=False)))
+        return iter(self._ordered(set.intersection(*sets), ordered=self._processKwargs('ordered', **kwargs)))
+
+    def fuzzy_correlation(self, *args, similarity=0.6, **kwargs):
+        """ Like the 'correlation' method but instead uses tool a from 'difflib' to do a fuzzy match """
+        return self._convert([self[index]
+                              for index in self.indices_of_fuzzy_correlation(*args,
+                                                                             similarity=similarity,
+                                                                             **kwargs)],
+                             convert=self._processKwargs('convert', **kwargs))
+
+    def _processKwargs(self, *args, **kwargs):
+        if len(args) > 1:
+            return [kwargs.get(key, getattr(self, key, None)) for key in args]
+        return kwargs.get(args[0], getattr(self, args[0], None))
+
+    def _ordered(self, indices, ordered=True) -> Iterable:
+        """ Helper function to order indices when asked or simply return indices unaffected """
+        if ordered:
+            indices = list(indices)
+            indices.sort()
+            return indices
+        return indices
+
+    def _convert(self, output, convert=True) -> Iterable:
+        """ Helper function to convert a new Table (ie: a list of lists) into an IndexedTable if convert is True """
+        if convert:
+            return IndexedTable(output, columns=self.columns)
+        return output
+
+    def _update_index(self, index, obj, remove=False) -> None:
+        """ Helper func used by List override methods to update the index dict instead of rebuilding from scratch """
+        if remove is True:
+            for item in obj:
+                self.__index[item].remove(index)
+                if not self.__index[item]:
+                    del self.__index[item]
+        elif isinstance(obj, IndexedTable):
+            for key, value in obj.__index.items():
+                self.__index[key] = self.__index[key].union(value)
+        else:
+            for i, items in enumerate(obj, start=index):
+                for item in items:
+                    self.__index[item].add(i)
+
+    # KeyedTable/List overrides
+    def append(self, obj) -> None:
+        super(IndexedTable, self).append(obj)
+        self._update_index(len(self) - 1, [obj])
+
+    def extend(self, iterable) -> None:
+        newList = list(iterable)
+        length = len(self)
+        super(IndexedTable, self).extend(newList)
+        self._update_index(length, newList)
+
+    def insert(self, index, obj) -> None:
+        super(IndexedTable, self).insert(index, obj)
+        if index == len(self):
+            return self._update_index(index, obj)
+        self.build_index(rebuild=True)
+
+    def pop(self, index=-1) -> list:
+        obj = super(IndexedTable, self).pop(index)
+        if index == -1 or index == len(self):
+            self._update_index(len(self), obj, remove=True)
+            return obj
+        self.build_index(rebuild=True)
+        return obj
+
+    def clear(self) -> None:
+        self.__index.clear()
+        super(IndexedTable, self).clear()
+
+    def copy(self, convert=True) -> Union[list, IndexedTable]:
+        if convert:
+            return IndexedTable(super(IndexedTable, self).copy(), columns=self.columns)
+        return super(IndexedTable, self).copy()
+
+    def remove(self, value: list) -> None:
+        super(IndexedTable, self).remove(value)
+        self.build_index(rebuild=True)
+
+    def reverse(self) -> None:
+        super(IndexedTable, self).reverse()
+        self.build_index(rebuild=True)
+
+    def sort(self, key=None, reverse=False):
+        super(IndexedTable, self).sort(key=key, reverse=reverse)
+        self.build_index(rebuild=True)
+
+    def sort_by_column(self, column: Hashable, column_type: Any, reverse: bool = False) -> None:
+        super(IndexedTable, self).sort_by_column(column, column_type=column_type, reverse=reverse)
+        self.build_index(rebuild=True)
 
 
 class NamespaceDict(Namespace):
