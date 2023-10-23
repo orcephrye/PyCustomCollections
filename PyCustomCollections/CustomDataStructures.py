@@ -60,6 +60,8 @@ class KeyedList(list):
         all the values of item[0] in its list.
 
         :var columns: A dictionary. Its values MUST BE INTEGERS
+
+        .. deprecated:: 1.0a
     """
 
     columns: dict = {}
@@ -190,10 +192,12 @@ class IndexList(KeyedList):
     """ <a name="IndexList"></a>
         IndexList: Inherits from KeyedList. Wraps around a dict called indexDict.
         Its purpose is to add the ability to index values passed to itself. Which in turn makes searching for values
-        and doing getCorrelation super fast.
+        and doing getCorrelation superfast.
 
         - :var indexDict: A dictionary where its keys are uniq values that have been appended to the list and the value
             the index/position in the list where the value can be found.
+
+        .. deprecated:: 1.0a
     """
 
     indexDict: defaultdict = defaultdict(list)
@@ -1210,14 +1214,19 @@ class NamespaceDict(Namespace):
         return self.__hiddenDict.get(key, default)
 
     def items(self):
-        items = (item for item in self.__hiddenDict.items())
-        next(items)
-        return items
+        def _helper_get_items(key, item):
+            return key, item
+        return self.__filter_dict_gen(_helper_get_items)
 
     def keys(self):
-        key = (key for key in self.__hiddenDict.keys())
-        next(key)
-        return set(key)
+        def _helper_get_items(key, item):
+            return key
+        return self.__filter_dict_gen(_helper_get_items)
+
+    def values(self):
+        def _helper_get_items(key, item):
+            return item
+        return self.__filter_dict_gen(_helper_get_items)
 
     def pop(self, key):
         if len(self.__hiddenDict) == 1:
@@ -1231,7 +1240,9 @@ class NamespaceDict(Namespace):
             item = self.__hiddenDict.popitem()
             self.__hiddenDict = vars(self)
             return item
-        return self.__hiddenDict.popitem()
+        item = next(self.items())
+        del self.__hiddenDict[item[0]]
+        return {item[0]: item[1]}
 
     def setdefault(self, key, default):
         return self.__hiddenDict.setdefault(key, default)
@@ -1239,7 +1250,7 @@ class NamespaceDict(Namespace):
     def update(self, m, **kwargs):
         self.__hiddenDict.update(m, **kwargs)
 
-    def values(self):
-        value = (value for value in self.__hiddenDict.keys())
-        next(value)
-        return list(value)
+    def __filter_dict_gen(self, helper_func):
+        for key, value in self.__hiddenDict.items():
+            if key != '_NamespaceDict__hiddenDict':
+                yield helper_func(key, value)
