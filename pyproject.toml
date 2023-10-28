@@ -36,13 +36,11 @@ exclude = [
 [tool.hatch.build.targets.wheel]
 packages = ["PyCustomCollections/"]
 
-[[tool.hatch.envs.test.matrix]]
-python = ["3.8", "3.9", "3.10", "3.11"]
-
 [tool.hatch.envs.default]
 dependencies = [
     "black",
     "pytest",
+    "pytest-cov",
     "ruff",
     "portray",
 ]
@@ -64,12 +62,39 @@ clean-pyc = [
     "find . -name '*~' -exec rm -f {{}} +",
     "find . -name '__pycache__' -exec rm -fr {{}} +",
 ]
+test = "pytest {args}"
+testcov = "pytest --cov=PyCustomCollections tests/ {args}"
+clean-test = "rm -rf .pytest_cache/"
+typing = "mypy PyCustomCollections/ {args}"
+clean-typing = "rm -rf .mypy_cache/"
+
+[tool.hatch.envs.test]
+dependencies = [
+    "pytest",
+    "pytest-cov",
+    "mypy"
+]
+
+[tool.hatch.envs.test.scripts]
+all = [
+    "pytest --cov=PyCustomCollections tests/ {args}",
+    "mypy PyCustomCollections/ {args}"
+]
+envs = "pytest --cov=PyCustomCollections tests/ {args}"
+typing = "mypy PyCustomCollections/ {args}"
+clean = [
+    "rm -rf .pytest_cache/",
+    "rm -rf .mypy_cache/"
+]
 
 [tool.hatch.envs.docs.scripts]
 clean = "rm -rf docs"
 html = "portray as_html -o docs"
 test = "portray in_browser"
 github = "portray on_github_pages"
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.8", "3.9", "3.10", "3.11"]
 
 [tool.ruff]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
@@ -133,7 +158,6 @@ exclude = '''
   )/
 )
 '''
-
 
 
 [tool.portray]

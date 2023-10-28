@@ -12,7 +12,7 @@ import traceback
 from difflib import get_close_matches as fmatch
 from collections import defaultdict, Counter
 from argparse import Namespace
-from typing import Hashable, Any, Union, Optional, List, Tuple, Type, Iterable, Dict, Callable
+from typing import Hashable, Any, Union, Optional, List, Tuple, Type, Iterable, Dict, Callable, no_type_check, Generator
 
 
 VERSION = '1.0a'
@@ -51,6 +51,7 @@ class FrozenDict(dict):
     __delattr__ = __setattr__ = __setitem__ = pop = update = setdefault = clear = popitem = _readonly
 
 
+@no_type_check
 class KeyedList(list):
     """ <a name="KeyedList"></a>
         KeyedList is designed to act like a Table. A list of lists where it's rows are numbered and its columns are
@@ -73,6 +74,7 @@ class KeyedList(list):
         else:
             super().__init__(*args)
 
+    @no_type_check
     def __getitem__(self, item: Union[Hashable, int]) -> List:
         """ This is overridden from list. It adds the feature of handling keys like a dictionary.
 
@@ -92,6 +94,7 @@ class KeyedList(list):
 
         self[:] = []
 
+    @no_type_check
     def get(self, item: Union[Hashable, int], default: Optional[Any] = None) -> Union[List, Any]:
         """ Return a list of items in the column identified by the 'item' parameter.
 
@@ -110,6 +113,7 @@ class KeyedList(list):
             return default
         return [value[tempInt] for value in self if len(value) > tempInt]
 
+    @no_type_check
     def getColumn(self, col: Union[Hashable, int], default: Optional[Any] = None) -> Union[List, Any]:
         """ Return a list of items in the column identified by the 'item' parameter.
 
@@ -165,6 +169,7 @@ class KeyedList(list):
         else:
             return default
 
+    @no_type_check
     def sort(self, *args, key: Optional[Any] = None, reverse: bool = False, keyType: Type[Any] = str) -> KeyedList:
         """ An overridden wrapper of list.sort. This adds the feature of 'keyType' and requires the use of 'key'.
 
@@ -187,7 +192,7 @@ class KeyedList(list):
             super().sort(reverse=reverse)
             return self
 
-
+@no_type_check
 class IndexList(KeyedList):
     """ <a name="IndexList"></a>
         IndexList: Inherits from KeyedList. Wraps around a dict called indexDict.
@@ -202,6 +207,7 @@ class IndexList(KeyedList):
 
     indexDict: defaultdict = defaultdict(list)
 
+    @no_type_check
     def __init__(self, values: Optional[IndexList, KeyedList, List] = None, columns: Optional[Dict] = None):
         """ Creates a new IndexList. I like to name mine il cuz I am cool. The params are all optional and are as
             follows.
@@ -223,7 +229,7 @@ class IndexList(KeyedList):
         else:
             super().__init__(columns=columns)
 
-    # Magic Functions!
+    @no_type_check
     def __setitem__(self, index: int, item: Iterable) -> None:
         """ This is overridden because of the added Indexing feature. the '_setItem' which is called helps deal with
             the problem of keeping the indexDic in sync with the actual data.
@@ -235,6 +241,7 @@ class IndexList(KeyedList):
 
         return self._setItem(index, item)
 
+    @no_type_check
     def __getitem__(self, key: Optional[Tuple, Hashable, int]) -> Any:
         """ This is a little confusion and verbose but basically the '__getitem__' magic function is whats called when
             brackets/[] are used. This is designed to handle str/tuple/int types.
@@ -257,6 +264,7 @@ class IndexList(KeyedList):
         self.indexDict = defaultdict(list)
         super().reset()
 
+    @no_type_check
     def sort(self,  *args, key: Optional[Any] = None, reverse: bool = False, keyType: Type[Any] = str) -> IndexList:
         """ Just like KeyedList except each time data is sorted the indexes have to be rebuild! Its a lot of overhead.
             To avoid this perhaps use sort only on small data sets of KeyedLists. For example first pull data from a
@@ -276,6 +284,7 @@ class IndexList(KeyedList):
         self._rebuildKeys()
         return self
 
+    @no_type_check
     def remove(self, value: Iterable) -> IndexList:
         try:
             super().remove(value)
@@ -287,6 +296,7 @@ class IndexList(KeyedList):
             raise e
         return self
 
+    @no_type_check
     # NOTE: If you append a value that is not hashable such as a list within a list then this will fail
     def append(self, value: Iterable) -> IndexList:
         """ This append function will return itself (the whole IndexList) on its success at adding new data or it will
@@ -300,6 +310,7 @@ class IndexList(KeyedList):
         self._appendItem(value)
         return self
 
+    @no_type_check
     def insert(self, index: Union[Hashable, int], item: Dict) -> None:
         """ This acts like insert from List
 
@@ -404,6 +415,7 @@ class IndexList(KeyedList):
             return [x for x in range(len(values)) if _searchColumns(compareKey=value, compareValue=values[x])]
         return []
 
+    @no_type_check
     def searchColumns(self, *args, dedup: bool = False, intersect: bool = False, **kwargs) -> List:
         """ Using searchColumn this can take multiple columns and can also deduplicate index values or only show index
             values that are the same. Review 'searchColumn' documentation for more info.
@@ -437,6 +449,7 @@ class IndexList(KeyedList):
             return [item for item, count in Counter(indexes).items() if count > 1]
         return indexes
 
+    @no_type_check
     def getIncompleteLineSearch(self, *args, wordsLeft: float = 0.4, **kwargs) -> IndexList:
         """ Ok the idea behind this is to be able to do a getCorrelation without knowing if some
             items in the search list past to args actually exists or not. This function filters the search list passed
@@ -504,6 +517,7 @@ class IndexList(KeyedList):
             output.extend([self[item] for item in searchesList])
         return output
 
+    @no_type_check
     def getSearch(self, *args, **kwargs) -> IndexList:
         """ This function uses 'search' and 'searchColumns' to find values that are used to build a new IndexList. This
             is likely the most used method of this class.
@@ -561,6 +575,7 @@ class IndexList(KeyedList):
             self.indexDict[value].append(num)
         return True
 
+    @no_type_check
     def _setItem(self, index: Union[Hashable, int], item: Dict) -> None:
         for key in super().__getitem__(index):
             self.indexDict[key].remove(index)
@@ -568,6 +583,7 @@ class IndexList(KeyedList):
             self.indexDict[value].append(index)
         return super().__setitem__(index, item)
 
+    @no_type_check
     def _getItem(self, key: Tuple) -> KeyedList:
         indexValues = self[key[0]]
         indexes = [x for x in range(len(indexValues)) if indexValues[x] == key[-1]]
@@ -613,7 +629,7 @@ class KeyedTable(list):
         :var columns: A dictionary. Its values MUST BE INTEGERS
     """
 
-    columns: dict = None
+    columns: dict = {}
 
     def __init__(self, *args, columns: Optional[Dict] = None):
         self.columns = columns or {}
@@ -621,6 +637,7 @@ class KeyedTable(list):
             raise TypeError('The columns dictionary values must be integers')
         super().__init__(*args)
 
+    @no_type_check
     def __getitem__(self, item: Union[Hashable, slice]) -> list:
         """ This override is meant to make this class subscriptable and thus item can more than just int/slice """
         if isinstance(item, (int, slice)):
@@ -646,13 +663,16 @@ class KeyedTable(list):
         """
 
         try:
-            if not self.columns and isinstance(item, str) and item.isdigit():
-                index = int(item)
+            if isinstance(item, int) and (not self.columns or item not in self.columns):
+                indices = item
+            elif not self.columns and isinstance(item, str) and item.isdigit():
+                indices = int(item)
             else:
-                index = self.columns[item]
+                indices = self.columns[item]
         except:
             return default
-        return [value[index] for value in self]
+        else:
+            return [value[indices] for value in self]
 
     def get_cell(self, row: int, col: Hashable, default: Any = None) -> Any:
         """ This requires a row specified by an integer and a column specified by a Hashable (usually str) type.
@@ -667,13 +687,15 @@ class KeyedTable(list):
 
         if len(self) < abs(row):
             return default
-        if not self.columns and isinstance(col, str) and col.isdigit():
+        if isinstance(col, int) and (not self.columns or col not in self.columns):
+            return self[row][col]
+        elif not self.columns and isinstance(col, str) and col.isdigit():
             return self[row][self.columns[int(col)]]
         elif col not in self.columns:
             return default
         return self[row][self.columns[col]]
 
-    def iter_column(self, col: Hashable, default: Any = ()) -> Union[Iterable, Any]:
+    def iter_column(self, col: Hashable, default: Any = None) -> Union[Iterable, Any]:
         """ Again this has the 'default' parameter which helps this method behave like a dictionary's 'get' method in
             the same way that KeyedList's 'get' method does. This is ment to make it efficient to iterate over any
             column in the dataset.
@@ -684,15 +706,18 @@ class KeyedTable(list):
         """
 
         try:
-            if not self.columns and isinstance(col, str) and col.isdigit():
+            if isinstance(col, int) and (not self.columns or col not in self.columns):
+                indices = col
+            elif not self.columns and isinstance(col, str) and col.isdigit():
                 indices = int(col)
             else:
                 indices = self.columns[col]
         except:
             return default
-        return (value[indices] for value in self)
+        else:
+            return (value[indices] for value in self)
 
-    def iter_row(self, row: int, default: Any = ()) -> Union[Iterable, Any]:
+    def iter_row(self, row: int, default: Any = None) -> Union[Iterable, Any]:
         """ Again this has the 'default' parameter which helps this method behave like a dictionary's 'get' method in
             the same way that KeyedList's 'get' method does. This is ment to make it easy to iterator over a
             specified row. Usually only necessary if the rows in the data are massive.
@@ -717,8 +742,13 @@ class KeyedTable(list):
         :param reverse: Same as reverse in List's 'sort' method.
         :return: None
         """
-
-        super().sort(key=lambda x: column_type(x[self.columns[column]]), reverse=reverse)
+        if isinstance(column, int) and (not self.columns or column not in self.columns):
+            indices = column
+        elif not self.columns and isinstance(column, str) and column.isdigit():
+            indices = int(column)
+        else:
+            indices = self.columns[column]
+        super().sort(key=lambda x: column_type(x[indices]), reverse=reverse)
 
 
 class IndexedTable(KeyedTable):
@@ -755,10 +785,12 @@ class IndexedTable(KeyedTable):
         self.ignore_case = ignore_case
         self.ordered = ordered
         self.convert = convert
-        self.__index = defaultdict(set)
+        self.__index: defaultdict = defaultdict(set)
         if len(args) == 1 and isinstance(args[0], (IndexedTable, KeyedTable)):
             super().__init__(*args, columns=args[0].columns)
-            self.__index = getattr(args[0], 'index', defaultdict(set))
+            tmpDefaultDict = getattr(args[0], '_IndexedTable__index')
+            if isinstance(tmpDefaultDict, defaultdict):
+                self.__index = tmpDefaultDict
         else:
             super().__init__(*args, columns=columns)
         if len(self) > 0:
@@ -801,6 +833,7 @@ class IndexedTable(KeyedTable):
                 if value in getattr(item, 'lower', dummy_func)():
                     return True
             return False
+        return False
 
     def has_pair(self, column, value, **kwargs) -> bool:
         """ Looks for a value within a column and returns True if it exists """
@@ -829,6 +862,7 @@ class IndexedTable(KeyedTable):
                 if value in item:
                     return True
             return False
+        return False
 
     def indices_of_value_by_keyword(self, keyword, **kwargs) -> Iterable:
         """
@@ -836,7 +870,7 @@ class IndexedTable(KeyedTable):
         """
 
         explicit, ignore_case, ordered = self._processKwargs('explicit', 'ignore_case', 'ordered',  **kwargs)
-        output = ()
+        output = iter(())
         if explicit is True and ignore_case is False:
             output = (index for index in self.__index.get(keyword, ()))
         if explicit is False and ignore_case is False:
@@ -903,7 +937,7 @@ class IndexedTable(KeyedTable):
 
         explicit, ignore_case, ordered = self._processKwargs('explicit', 'ignore_case', 'ordered', **kwargs)
         columnIter = self.iter_column(column, default=None)
-        output = ()
+        output: Union[Generator, Iterable] = iter(())
         if columnIter is None:
             return output
         if isinstance(keywords, str):
@@ -924,9 +958,9 @@ class IndexedTable(KeyedTable):
         return self._ordered(output, ordered=ordered)
 
     def search_by_column(self, column: Hashable, keywords: Union[str, tuple], **kwargs) -> Iterable:
-        """ This uses a pair of data. A column which should be value that can be found in the 'columns' KeyedList class
-            variable. And 1 or more keywords. The keywords must be a string which is treated like a single value or a
-            tuple of values.
+        """ This uses a pair of data. A column which should be a value that can be found in the 'columns' KeyedList
+            class variable or a column number. And 1 or more keywords. The keywords must be a string which is treated
+            like a single value or a tuple of values.
 
         :param column: (Hashable) usually a string which is used iterator over a column using KeyedList's 'iter_column'.
         :param keywords: (str, tuple). Used to compare values found within the output of 'iter_columns'.
@@ -980,8 +1014,8 @@ class IndexedTable(KeyedTable):
         """ This is a special search tool that doesn't have a 'indices_of' paired method. It is meant to run a search
             against a whole line instead of just a single entry. It also is meant to be able to return values even
             when certain words are missing. The goal is to do something similar to a fuzzy match but against a
-            whole line. This is a very efficient search as it uses 'has_value' to build out keywords that are then
-            passed to 'search' with AND=True set.
+            whole line. This is a efficient search as it uses 'has_value' to build out keywords that are then passed to
+            'search' with AND=True set.
 
         :param args: This is either an undetermined number of keywords or a single item which is a string. If it is a
             single string item this item is stripped and split to build out a list that should loosely represent the row
@@ -999,21 +1033,24 @@ class IndexedTable(KeyedTable):
         explicit, ignore_case, ordered, convert = self._processKwargs('explicit', 'ignore_case',
                                                                       'ordered', 'convert', **kwargs)
 
+        string_list: list[str] = []
         if len(args) == 1:
             if type(args[0]) is str and len(args[0].strip().split()) > 1:
-                args = args[0].strip().split()
+                string_list = args[0].strip().split()
+        else:
+            string_list = list(args)
 
-        newSearchList = [value for value in args if self.has_value(value, explicit=explicit, ignore_case=ignore_case)]
+        newSearchList = [value for value in string_list if self.has_value(value, explicit=explicit, ignore_case=ignore_case)]
         if not newSearchList:
             return self._convert([[]], convert=True)
 
         if len(newSearchList) < 2:
             return self._convert([[]], convert=True)
 
-        if float(len(newSearchList)) / float(len(args)) < words_left:
+        if float(len(newSearchList)) / float(len(string_list)) < words_left:
             return self._convert([[]], convert=True)
 
-        return self.search(*args, AND=True, explicit=explicit, ignore_case=ignore_case,
+        return self.search(*string_list, AND=True, explicit=explicit, ignore_case=ignore_case,
                            convert=convert, ordered=ordered)
 
     def fuzzy_has_value(self, value: str, similarity=0.6) -> bool:
@@ -1035,15 +1072,25 @@ class IndexedTable(KeyedTable):
     def indices_of_fuzzy_search(self, *args, similarity=0.6, AND=False, **kwargs) -> Iterable:
         """ Helper function for fuzzy_search returns an iterable object of indices as does all 'indices_of' methods """
 
+        def _and_helper(tmpList):
+            num = len(args)
+            for k, v in Counter(tmpList).items():
+                if v >= num:
+                    yield k
+
         ordered = self._processKwargs('ordered', **kwargs)
         number = len(self.__index)
-        sets = list((self.__index[match]
-                     for keyword in args
-                     for match in fmatch(keyword, self.__index, n=number, cutoff=similarity)))
+        lists = []
+        for keyword in args:
+            for match in fmatch(keyword, self.__index, n=number, cutoff=similarity):
+                lists.extend(list(self.__index[match]))
+
+        if not lists:
+            return ()
         if AND is True:
-            return iter(self._ordered(set.intersection(*sets), ordered=ordered))
+            return iter(self._ordered(_and_helper(lists), ordered=ordered))
         else:
-            return iter(self._ordered(set.union(*sets), ordered=ordered))
+            return iter(self._ordered(set(lists), ordered=ordered))
 
     def fuzzy_search(self, *args, similarity=0.6, AND=False, **kwargs) -> Iterable:
         """ Like the 'search' method but instead uses tool a from 'difflib' to do a fuzzy match """
@@ -1101,7 +1148,7 @@ class IndexedTable(KeyedTable):
         if ordered:
             indices = list(indices)
             indices.sort()
-            return indices
+            return iter(indices)
         return indices
 
     def _convert(self, output, convert=True) -> Iterable:
