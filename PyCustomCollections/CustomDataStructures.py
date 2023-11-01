@@ -1040,7 +1040,9 @@ class IndexedTable(KeyedTable):
         else:
             string_list = list(args)
 
-        newSearchList = [value for value in string_list if self.has_value(value, explicit=explicit, ignore_case=ignore_case)]
+        newSearchList = [value for value in string_list if self.has_value(value,
+                                                                          explicit=explicit,
+                                                                          ignore_case=ignore_case)]
         if not newSearchList:
             return self._convert([[]], convert=True)
 

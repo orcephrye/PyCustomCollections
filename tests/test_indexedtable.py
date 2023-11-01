@@ -1,7 +1,5 @@
-import pytest
 from PyCustomCollections.CustomDataStructures import IndexedTable as IT
 from collections import defaultdict
-from collections.abc import Iterable
 
 
 index_table = [['One', 'Two', 'Three'], ['Four', 'Five', 'Six'], ['Seven', 'Eight', 'Nine']]
