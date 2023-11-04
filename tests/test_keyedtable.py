@@ -1,4 +1,3 @@
-import pytest
 from PyCustomCollections.CustomDataStructures import KeyedTable
 from collections.abc import Iterable
 

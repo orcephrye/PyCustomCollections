@@ -117,7 +117,7 @@ if data is formatted with the same number of columns. It also shows that the 'ge
 data is not formatted correctly. This is really useful when dealing with log file entries. 'getRow' and 'getCell' 
 also gracefully handle erratically formatted data. These 3 functions also all act like 'get' method from 'dict' in that
 they also have a 'default' parameter which is what is returned when nothing is found. Other 'get' methods are 'search'
-methods and are explained below.
+methods and are explained below. 
 ```python
 from CustomDataStructures import IndexList 
 il1 = IndexList(columns={'ID': 0, 'Name': 1, 'SuperPower': 2})

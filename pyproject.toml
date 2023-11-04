@@ -64,9 +64,14 @@ clean-pyc = [
 ]
 test = "pytest {args}"
 testcov = "pytest --cov=PyCustomCollections tests/ {args}"
-clean-test = "rm -rf .pytest_cache/"
+test-clean = "rm -rf .pytest_cache/"
 typing = "mypy PyCustomCollections/ {args}"
-clean-typing = "rm -rf .mypy_cache/"
+typing-clean = "rm -rf .mypy_cache/"
+clean-all = [
+    "rm -rf .pytest_cache/",
+    "rm -rf .mypy_cache/",
+    "ruff clean",
+]
 
 [tool.hatch.envs.test]
 dependencies = [
@@ -84,7 +89,8 @@ envs = "pytest --cov=PyCustomCollections tests/ {args}"
 typing = "mypy PyCustomCollections/ {args}"
 clean = [
     "rm -rf .pytest_cache/",
-    "rm -rf .mypy_cache/"
+    "rm -rf .mypy_cache/",
+    "ruff clean"
 ]
 
 [tool.hatch.envs.docs.scripts]
@@ -99,7 +105,7 @@ python = ["3.8", "3.9", "3.10", "3.11"]
 [tool.ruff]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 select = ["E", "F"]
-ignore = []
+ignore = ["E722", "E401", "E721"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]
@@ -128,6 +134,7 @@ exclude = [
     "dist",
     "node_modules",
     "venv",
+    "tests"
 ]
 
 # Same as Black.
